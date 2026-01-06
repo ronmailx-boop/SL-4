@@ -10,24 +10,38 @@
         * { box-sizing: border-box; }
         body { font-family: system-ui, sans-serif; background: #f4f7fa; padding-bottom: 220px; overflow-x: hidden; }
         
-        /* עיצוב הבר התחתון לפי התמונה */
         .bottom-bar { 
             position: fixed; bottom: 0; left: 0; right: 0; 
-            background: #7367f0; /* סגול לפי התמונה */
+            background: #7367f0; 
             z-index: 1000; padding: 15px 10px 40px 10px; border-radius: 40px 40px 0 0; 
             box-shadow: 0 -5px 25px rgba(0,0,0,0.2);
         }
 
         .item-card {
             background: white;
-            border-radius: 28px;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border-radius: 24px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             border: 1px solid #f0f0f0;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            position: relative;
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .item-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #f9fafb;
+            padding-top: 10px;
         }
 
         .modal-overlay { 
@@ -44,7 +58,7 @@
         <div class="bg-white w-80 p-6 rounded-3xl text-center shadow-2xl">
             <h2 class="text-xl font-bold mb-4">למחוק את כל הרשימה?</h2>
             <div class="flex gap-3">
-                <button onclick="confirmClearAll()" class="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl active:scale-95 transition">מחק הכל</button>
+                <button onclick="confirmClearAll()" class="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl">מחק הכל</button>
                 <button onclick="closeDeleteModal()" class="flex-1 py-3 bg-gray-100 font-bold rounded-xl">ביטול</button>
             </div>
         </div>
@@ -55,7 +69,7 @@
             <h2 class="text-lg font-bold mb-4 text-indigo-600">עדכון מחיר</h2>
             <input type="number" id="newPriceInput" inputmode="decimal" class="w-full p-3 border-2 border-indigo-100 rounded-xl mb-4 text-center text-xl font-bold outline-none">
             <div class="flex gap-3">
-                <button onclick="confirmPriceUpdate()" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl active:scale-95 transition">עדכן</button>
+                <button onclick="confirmPriceUpdate()" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl">עדכן</button>
                 <button onclick="closePriceModal()" class="flex-1 py-3 bg-gray-100 font-bold rounded-xl">ביטול</button>
             </div>
         </div>
@@ -91,16 +105,16 @@
         </div>
         
         <div class="flex items-center justify-around px-2">
-            <button onclick="openDeleteModal()" class="w-14 h-14 bg-[#ea5455] rounded-full flex items-center justify-center shadow-lg active:scale-90 transition">
-                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            <button id="lockBtn" onclick="toggleLock()" class="w-14 h-14 bg-[#48a9f8] rounded-full flex items-center justify-center shadow-lg active:scale-90 transition">
+                <svg id="lockIcon" class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path id="lockPath" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
             </button>
 
             <button onclick="openForm()" class="w-20 h-20 bg-[#28c76f] rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20 active:scale-95 transition">
                 <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
             </button>
 
-            <button id="lockBtn" onclick="toggleLock()" class="w-14 h-14 bg-[#48a9f8] rounded-full flex items-center justify-center shadow-lg active:scale-90 transition">
-                <svg id="lockIcon" class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path id="lockPath" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
+            <button onclick="openDeleteModal()" class="w-14 h-14 bg-[#ea5455] rounded-full flex items-center justify-center shadow-lg active:scale-90 transition">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
             </button>
         </div>
     </div>
@@ -149,18 +163,23 @@
                 div.className = "item-card";
                 div.dataset.id = item.id;
                 div.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="text-3xl font-bold text-gray-800 ${item.checked ? 'line-through text-gray-300' : ''}">${item.name}</span>
-                        <span onclick="openPriceModal(${index})" class="text-2xl font-bold text-indigo-600">₪${(item.unitPrice * item.qty).toFixed(2)}</span>
+                    <div class="item-header">
+                        <span class="text-2xl font-bold text-gray-800 ${item.checked ? 'line-through text-gray-300' : ''}">${item.name}</span>
+                        <span onclick="openPriceModal(${index})" class="text-xl font-bold text-indigo-600">₪${(item.unitPrice * item.qty).toFixed(2)}</span>
                     </div>
-                    <div class="flex justify-between items-center mt-2">
-                        <div class="flex items-center gap-4 bg-gray-50 p-2 rounded-2xl border">
-                            <button onclick="updateQty(${index}, 1)" class="w-10 h-10 bg-white rounded-xl shadow-sm text-green-600 text-2xl font-bold">+</button>
-                            <span class="text-xl font-bold w-6 text-center">${item.qty}</span>
-                            <button onclick="updateQty(${index}, -1)" class="w-10 h-10 bg-white rounded-xl shadow-sm text-red-500 text-2xl font-bold">-</button>
+                    <div class="item-footer">
+                        <div class="flex items-center gap-3">
+                            <button onclick="removeItem(${index})" class="p-2 bg-red-50 text-red-500 rounded-xl">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                            <div class="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border">
+                                <button onclick="updateQty(${index}, 1)" class="w-8 h-8 bg-white rounded-lg shadow-sm text-green-600 font-bold">+</button>
+                                <span class="font-bold text-lg px-2">${item.qty}</span>
+                                <button onclick="updateQty(${index}, -1)" class="w-8 h-8 bg-white rounded-lg shadow-sm text-red-500 font-bold">-</button>
+                            </div>
                         </div>
                         <div class="flex items-center gap-4">
-                            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleCheck(${index})" class="w-8 h-8 rounded-lg accent-indigo-600">
+                            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleCheck(${index})" class="w-8 h-8 rounded-lg accent-indigo-600 border-2">
                             <div class="drag-handle text-gray-300 text-2xl ${isLocked ? 'hidden' : ''}">⠿</div>
                         </div>
                     </div>
@@ -181,6 +200,7 @@
         function saveAndRender() { localStorage.setItem('LIST_FINAL_V1', JSON.stringify(shoppingList)); render(); }
         function toggleCheck(index) { shoppingList[index].checked = !shoppingList[index].checked; saveAndRender(); }
         function updateQty(index, val) { if (shoppingList[index].qty + val >= 1) { shoppingList[index].qty += val; saveAndRender(); } }
+        function removeItem(index) { shoppingList.splice(index, 1); saveAndRender(); }
         
         function toggleLock() {
             isLocked = !isLocked;
@@ -188,7 +208,7 @@
             const btn = document.getElementById('lockBtn');
             tag.innerText = isLocked ? "גרירה נעולה" : "מצב עריכה";
             tag.className = isLocked ? "text-[10px] py-1 px-3 rounded-full bg-gray-100 text-gray-400 font-bold w-fit mt-1" : "text-[10px] py-1 px-3 rounded-full bg-orange-50 text-orange-600 font-bold w-fit mt-1";
-            btn.className = isLocked ? "w-14 h-14 bg-gray-400 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition" : "w-14 h-14 bg-[#48a9f8] rounded-full flex items-center justify-center shadow-lg active:scale-90 transition";
+            btn.className = isLocked ? "w-14 h-14 bg-gray-400 rounded-full flex items-center justify-center shadow-lg transition" : "w-14 h-14 bg-[#48a9f8] rounded-full flex items-center justify-center shadow-lg transition";
             render();
         }
 
