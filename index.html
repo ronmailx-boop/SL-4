@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>רשימת קניות חכמה</title>
     
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#7367f0">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" type="image/png" href="icon.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     
@@ -13,7 +18,6 @@
         body { 
             font-family: system-ui, sans-serif; 
             background: #f4f7fa; 
-            /* ריווח בתחתית כדי שהמוצר האחרון לא יוסתר על ידי הבר הסגול */
             padding-bottom: 180px; 
             overflow-x: hidden; 
             min-height: 100vh;
@@ -21,13 +25,12 @@
         
         .bottom-bar { 
             position: fixed; 
-            bottom: 0; /* צמוד לקצה התחתון של המסך למניעת "הצצות" */
+            bottom: 0; 
             left: 0; 
             right: 0; 
             background: #7367f0; 
             z-index: 1000; 
             padding: 15px 15px 30px 15px; 
-            /* פינות מעוגלות רק למעלה כדי ליצור אטימה מושלמת למטה */
             border-radius: 35px 35px 0 0; 
             box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.15);
         }
@@ -153,21 +156,18 @@
             initSort();
         }
 
-        // פתיחת מודאל מחיר עם סימון אוטומטי של המספר
         function openPriceModal(index) { 
             currentEditIndex = index; 
             const input = document.getElementById('newPriceInput');
             input.value = shoppingList[index].unitPrice; 
             document.getElementById('priceModal').style.display = 'flex';
-            
             setTimeout(() => {
                 input.focus();
-                input.select(); // מסמן את כל הספרות לטובת הזנה מהירה
+                input.select(); 
             }, 150);
         }
 
         function closePriceModal() { document.getElementById('priceModal').style.display='none'; }
-        
         function confirmPriceUpdate() { 
             shoppingList[currentEditIndex].unitPrice = parseFloat(document.getElementById('newPriceInput').value) || 0; 
             closePriceModal(); save(); 
@@ -226,7 +226,6 @@
             const btn = document.getElementById('lockBtn');
             const path = document.getElementById('lockPath');
             const tag = document.getElementById('statusTag');
-            
             if (isLocked) {
                 btn.className = "w-12 h-12 lock-btn-locked rounded-full flex items-center justify-center shadow-lg transition";
                 tag.innerText = "נעול";
