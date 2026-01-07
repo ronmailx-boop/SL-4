@@ -13,20 +13,20 @@
         body { 
             font-family: system-ui, sans-serif; 
             background: #f4f7fa; 
-            padding-bottom: 160px; /* רווח תחתון גדול יותר כדי שהרשימה לא תתחבא */
+            padding-bottom: 160px; 
             overflow-x: hidden; 
             min-height: 100vh;
         }
         
         .bottom-bar { 
             position: fixed; 
-            bottom: 15px; /* מרווח מהקצה התחתון */
+            bottom: 15px; 
             left: 15px; 
             right: 15px; 
             background: #7367f0; 
             z-index: 1000; 
             padding: 15px 10px 15px 10px; 
-            border-radius: 30px; /* פינות מעוגלות מכל הצדדים */
+            border-radius: 30px; 
             box-shadow: 0 10px 25px rgba(115, 103, 240, 0.3);
         }
 
@@ -105,7 +105,7 @@
                 <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="4" d="M12 4v16m8-8H4"></path></svg>
             </button>
             <button onclick="openDeleteModal()" class="w-12 h-12 bg-[#ea5455] rounded-full flex items-center justify-center shadow-lg active:scale-90 transition">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1v3M4 7h16"></path></svg>
             </button>
         </div>
     </div>
@@ -151,6 +151,26 @@
             initSort();
         }
 
+        function openPriceModal(index) { 
+            currentEditIndex = index; 
+            const input = document.getElementById('newPriceInput');
+            input.value = shoppingList[index].unitPrice; 
+            document.getElementById('priceModal').style.display = 'flex';
+            
+            // השורות שגורמות לסימון הטקסט ופתיחת מקלדת
+            setTimeout(() => {
+                input.focus();
+                input.select(); // מסמן את כל הספרות
+            }, 100);
+        }
+
+        function closePriceModal() { document.getElementById('priceModal').style.display='none'; }
+        
+        function confirmPriceUpdate() { 
+            shoppingList[currentEditIndex].unitPrice = parseFloat(document.getElementById('newPriceInput').value) || 0; 
+            closePriceModal(); save(); 
+        }
+
         function initSort() {
             const el = document.getElementById('itemsList');
             if (sortableInstance) sortableInstance.destroy();
@@ -181,13 +201,6 @@
             document.getElementById('itemPrice').value = '';
             toggleInputForm();
             save();
-        }
-
-        function openPriceModal(index) { currentEditIndex = index; document.getElementById('newPriceInput').value = shoppingList[index].unitPrice; document.getElementById('priceModal').style.display='flex'; }
-        function closePriceModal() { document.getElementById('priceModal').style.display='none'; }
-        function confirmPriceUpdate() { 
-            shoppingList[currentEditIndex].unitPrice = parseFloat(document.getElementById('newPriceInput').value) || 0; 
-            closePriceModal(); save(); 
         }
 
         function openDeleteModal() { if(shoppingList.length > 0) document.getElementById('deleteModal').style.display='flex'; }
