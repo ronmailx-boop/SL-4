@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>הקראת טקסט</title>
+
+    <meta name="theme-color" content="#7367f0">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" type="image/png" href="icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, sans-serif;
+            background: #f4f7fa;
+            min-height: 100vh;
+        }
+        textarea { resize: vertical; }
+        details > summary { cursor: pointer; list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="max-w-md mx-auto p-4">
+        <div class="bg-white rounded-2xl p-4 mb-4 flex justify-between items-center shadow-sm">
+            <div>
+                <h1 class="text-xl font-bold text-slate-800">הקראת טקסט</h1>
+                <span id="statusTag" class="text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 inline-block">מוכן</span>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-3xl shadow-lg mb-4">
+            <textarea id="ttsText" dir="rtl" rows="8" placeholder="הדבק כאן טקסט בעברית..." class="w-full p-3 border rounded-xl outline-none"></textarea>
+
+            <div id="noVoiceWarning" class="hidden mt-3 text-[12px] text-orange-600 bg-orange-50 rounded-xl p-2">
+                לא נמצא קול עברי מותקן בדפדפן/מערכת ההפעלה. ניתן עדיין לנסות להקריא באמצעות הקול המובנה.
+            </div>
+
+            <div class="flex gap-3 mt-4">
+                <button id="playBtn" onclick="play()" class="flex-1 py-4 bg-[#28c76f] text-white font-bold rounded-xl active:scale-95 transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    הפעלה
+                </button>
+                <button id="stopBtn" onclick="stop()" disabled class="flex-1 py-4 bg-[#ea5455] text-white font-bold rounded-xl active:scale-95 transition flex items-center justify-center gap-2 disabled:opacity-40">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
+                    עצירה
+                </button>
+            </div>
+        </div>
+
+        <details class="bg-white p-5 rounded-3xl shadow-sm">
+            <summary class="font-bold text-slate-700 flex items-center justify-between">
+                הגדרות קול
+                <span class="text-slate-400">▾</span>
+            </summary>
+            <div class="mt-4">
+                <label class="block text-[12px] text-slate-500 mb-1">קול</label>
+                <select id="voiceSelect" class="w-full p-3 border rounded-xl outline-none mb-4"></select>
+
+                <label class="block text-[12px] text-slate-500 mb-1">קצב דיבור: <span id="rateValue">1</span></label>
+                <input id="rateInput" type="range" min="0.5" max="1.5" step="0.1" value="1" class="w-full">
+            </div>
+        </details>
+    </div>
+
+    <script>
+        const ttsText = document.getElementById('ttsText');
+        const playBtn = document.getElementById('playBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const statusTag = document.getElementById('statusTag');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const noVoiceWarning = document.getElementById('noVoiceWarning');
+        const rateInput = document.getElementById('rateInput');
+        const rateValue = document.getElementById('rateValue');
+
+        const TEXT_KEY = 'TTS_TEXT_V1';
+        ttsText.value = localStorage.getItem(TEXT_KEY) || '';
+        ttsText.addEventListener('input', () => localStorage.setItem(TEXT_KEY, ttsText.value));
+
+        rateInput.addEventListener('input', () => { rateValue.textContent = rateInput.value; });
+
+        const supported = 'speechSynthesis' in window;
+        const synth = supported ? window.speechSynthesis : null;
+
+        let chunks = [];
+        let stopRequested = false;
+        let isSpeaking = false;
+
+        function setStatus(text, className) {
+            statusTag.textContent = text;
+            statusTag.className = className + " px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 inline-block";
+        }
+
+        function updateUI() {
+            if (!supported) {
+                setStatus('הדפדפן אינו תומך בהקראה', 'text-gray-500 bg-gray-100');
+                playBtn.disabled = true;
+                playBtn.classList.add('opacity-40');
+                stopBtn.disabled = true;
+                return;
+            }
+            stopBtn.disabled = !isSpeaking;
+            setStatus(isSpeaking ? 'מקריא...' : 'מוכן', isSpeaking ? 'text-green-600 bg-green-50' : 'text-orange-600 bg-orange-50');
+        }
+
+        function loadVoices() {
+            if (!supported) return;
+            const voices = synth.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('he'));
+            const previousValue = voiceSelect.value;
+            voiceSelect.innerHTML = '';
+
+            if (voices.length === 0) {
+                voiceSelect.classList.add('hidden');
+                noVoiceWarning.classList.remove('hidden');
+                return;
+            }
+
+            voiceSelect.classList.remove('hidden');
+            noVoiceWarning.classList.add('hidden');
+            voices.forEach((v, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `${v.name} (${v.lang})`;
+                voiceSelect.appendChild(opt);
+            });
+            if (previousValue && Number(previousValue) < voices.length) voiceSelect.value = previousValue;
+            voiceSelect.dataset.voices = JSON.stringify(voices.map(v => v.name));
+        }
+
+        function getSelectedVoice() {
+            if (!supported) return null;
+            const voices = synth.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('he'));
+            const idx = Number(voiceSelect.value);
+            return voices[idx] || null;
+        }
+
+        function splitIntoChunks(text) {
+            const raw = text.match(/[^.!?\n]+[.!?\n]*/g) || [text];
+            const result = [];
+            raw.forEach(s => {
+                s = s.trim();
+                if (!s) return;
+                if (s.length > 200) {
+                    (s.match(/.{1,200}(,|\s|$)/g) || [s]).forEach(part => {
+                        part = part.trim();
+                        if (part) result.push(part);
+                    });
+                } else {
+                    result.push(s);
+                }
+            });
+            return result;
+        }
+
+        function speakChunk(i) {
+            if (stopRequested || i >= chunks.length) {
+                isSpeaking = false;
+                updateUI();
+                return;
+            }
+            const utterance = new SpeechSynthesisUtterance(chunks[i]);
+            utterance.lang = 'he-IL';
+            const voice = getSelectedVoice();
+            if (voice) utterance.voice = voice;
+            utterance.rate = parseFloat(rateInput.value) || 1;
+            utterance.onend = () => speakChunk(i + 1);
+            utterance.onerror = (e) => {
+                if (e.error !== 'interrupted' && e.error !== 'canceled') console.warn('TTS error', e.error);
+                speakChunk(i + 1);
+            };
+            synth.speak(utterance);
+        }
+
+        function play() {
+            if (!supported) return;
+            loadVoices();
+            const text = ttsText.value.trim();
+            if (!text) {
+                ttsText.classList.add('border-red-400');
+                setTimeout(() => ttsText.classList.remove('border-red-400'), 600);
+                return;
+            }
+            synth.cancel();
+            stopRequested = false;
+            chunks = splitIntoChunks(text);
+            isSpeaking = true;
+            updateUI();
+            speakChunk(0);
+        }
+
+        function stop() {
+            if (!supported) return;
+            stopRequested = true;
+            synth.cancel();
+            isSpeaking = false;
+            updateUI();
+        }
+
+        if (supported) {
+            loadVoices();
+            synth.onvoiceschanged = loadVoices;
+        }
+        updateUI();
+    </script>
+</body>
+</html>
