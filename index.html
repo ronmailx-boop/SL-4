@@ -102,10 +102,13 @@
         let chunkOffsets = [];
         let originalText = '';
         let stopRequested = false;
+        let pauseRequested = false;
         let isSpeaking = false;
         let isPaused = false;
-        let pauseWatchdogTimer = null;
-        let resumeToken = 0;
+        let lastKnownAbsOffset = 0;
+        let boundaryReceivedForChunk = false;
+        let simHighlightTimer = null;
+        let speakGeneration = 0;
 
         function setStatus(text, className) {
             statusTag.textContent = text;
@@ -211,26 +214,93 @@
             if (span) span.scrollIntoView({ block: 'nearest' });
         }
 
+        function stopSimulatedHighlight() {
+            if (simHighlightTimer) {
+                clearTimeout(simHighlightTimer);
+                simHighlightTimer = null;
+            }
+        }
+
+        function estimateWordDurationMs(word, rate) {
+            return (150 + word.length * 60) / (rate || 1);
+        }
+
+        // Many Hebrew voices never fire utterance.onboundary (word-boundary events
+        // are voice/engine-dependent, not guaranteed by the spec). When that happens
+        // we approximate word-by-word timing ourselves so highlighting still moves,
+        // instead of leaving the text unhighlighted for the whole chunk.
+        function startSimulatedHighlight(chunkText, chunkOffset, rate, myGen) {
+            stopSimulatedHighlight();
+            const words = [];
+            const re = /\S+/g;
+            let m;
+            while ((m = re.exec(chunkText)) !== null) {
+                words.push({ start: chunkOffset + m.index, len: m[0].length, text: m[0] });
+            }
+            let idx = 0;
+            function tick() {
+                if (myGen !== speakGeneration || idx >= words.length) { simHighlightTimer = null; return; }
+                const w = words[idx];
+                lastKnownAbsOffset = w.start;
+                renderHighlight(w.start, w.len);
+                idx++;
+                simHighlightTimer = setTimeout(tick, estimateWordDurationMs(w.text, rate));
+            }
+            tick();
+        }
+
         function speakChunk(i) {
-            if (stopRequested || i >= chunks.length) {
+            if (stopRequested || pauseRequested) {
+                updateUI();
+                return;
+            }
+            if (i >= chunks.length) {
+                stopSimulatedHighlight();
                 isSpeaking = false;
                 isPaused = false;
                 updateUI();
                 return;
             }
+            const myGen = ++speakGeneration;
             const utterance = new SpeechSynthesisUtterance(chunks[i]);
             utterance.lang = 'he-IL';
             const voice = getSelectedVoice();
             if (voice) utterance.voice = voice;
-            utterance.rate = parseFloat(rateInput.value) || 1;
+            const rate = parseFloat(rateInput.value) || 1;
+            utterance.rate = rate;
+
+            boundaryReceivedForChunk = false;
+            lastKnownAbsOffset = chunkOffsets[i];
+            stopSimulatedHighlight();
+
+            utterance.onstart = () => {
+                setTimeout(() => {
+                    if (myGen !== speakGeneration) return;
+                    if (!boundaryReceivedForChunk && !stopRequested && !pauseRequested) {
+                        startSimulatedHighlight(chunks[i], chunkOffsets[i], rate, myGen);
+                    }
+                }, 400);
+            };
             utterance.onboundary = (event) => {
+                if (myGen !== speakGeneration) return;
                 if (event.name === 'sentence') return;
+                boundaryReceivedForChunk = true;
+                stopSimulatedHighlight();
                 const absStart = chunkOffsets[i] + event.charIndex;
                 const len = event.charLength > 0 ? event.charLength : ((originalText.slice(absStart).match(/^\S+/) || [''])[0].length || 1);
+                lastKnownAbsOffset = absStart;
                 renderHighlight(absStart, len);
             };
-            utterance.onend = () => speakChunk(i + 1);
+            utterance.onend = () => {
+                if (myGen !== speakGeneration) return;
+                stopSimulatedHighlight();
+                if (pauseRequested) { pauseRequested = false; updateUI(); return; }
+                speakChunk(i + 1);
+            };
             utterance.onerror = (e) => {
+                if (myGen !== speakGeneration) return;
+                stopSimulatedHighlight();
+                if (pauseRequested) { pauseRequested = false; updateUI(); return; }
                 if (e.error !== 'interrupted' && e.error !== 'canceled') console.warn('TTS error', e.error);
                 speakChunk(i + 1);
             };
@@ -247,13 +317,16 @@
                 return;
             }
             synth.cancel();
-            clearTimeout(pauseWatchdogTimer);
+            stopSimulatedHighlight();
+            speakGeneration++;
             stopRequested = false;
+            pauseRequested = false;
             isPaused = false;
             originalText = text;
             const built = splitIntoChunks(text);
             chunks = built.map(c => c.text);
             chunkOffsets = built.map(c => c.start);
+            lastKnownAbsOffset = 0;
             isSpeaking = true;
             ttsHighlightView.textContent = originalText;
             updateUI();
@@ -263,33 +336,47 @@
         function stop() {
             if (!supported) return;
             stopRequested = true;
-            clearTimeout(pauseWatchdogTimer);
+            pauseRequested = false;
+            speakGeneration++;
+            stopSimulatedHighlight();
             synth.cancel();
             isSpeaking = false;
             isPaused = false;
             updateUI();
         }
 
+        // Native speechSynthesis.pause()/resume() is unreliable across browsers
+        // (notably Chrome with network-based voices, where resume() can silently
+        // no-op forever). Instead we cancel the in-flight utterance and, on resume,
+        // re-speak the remaining text from the last known word position - this only
+        // relies on cancel()/speak(), which are the two well-supported operations.
         function pause() {
             if (!supported || !isSpeaking || isPaused) return;
-            synth.pause();
+            pauseRequested = true;
+            speakGeneration++;
+            stopSimulatedHighlight();
+            synth.cancel();
             isPaused = true;
             updateUI();
         }
 
         function resume() {
             if (!supported || !isSpeaking || !isPaused) return;
-            synth.resume();
+            const remaining = originalText.slice(lastKnownAbsOffset);
+            if (!remaining.trim()) {
+                isSpeaking = false;
+                isPaused = false;
+                updateUI();
+                return;
+            }
+            const built = splitIntoChunks(remaining);
+            chunks = built.map(c => c.text);
+            chunkOffsets = built.map(c => c.start + lastKnownAbsOffset);
+            stopRequested = false;
+            pauseRequested = false;
             isPaused = false;
             updateUI();
-            clearTimeout(pauseWatchdogTimer);
-            const token = ++resumeToken;
-            pauseWatchdogTimer = setTimeout(() => {
-                if (token !== resumeToken || !synth.paused) return;
-                isPaused = true;
-                updateUI();
-                setStatus('לא ניתן להמשיך - נסו ללחוץ עצירה ולהתחיל מחדש', 'text-red-600 bg-red-50');
-            }, 1500);
+            speakChunk(0);
         }
 
         function togglePause() {
