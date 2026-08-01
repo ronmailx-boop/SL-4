@@ -38,6 +38,7 @@
 
         <div class="bg-white p-5 rounded-3xl shadow-lg mb-4">
             <textarea id="ttsText" dir="rtl" rows="8" placeholder="הדבק כאן טקסט בעברית..." class="w-full p-3 border rounded-xl outline-none"></textarea>
+            <div id="ttsHighlightView" dir="rtl" class="hidden w-full p-3 border rounded-xl outline-none whitespace-pre-wrap leading-relaxed overflow-y-auto" style="max-height: 260px;"></div>
 
             <div id="noVoiceWarning" class="hidden mt-3 text-[12px] text-orange-600 bg-orange-50 rounded-xl p-2">
                 לא נמצא קול עברי מותקן בדפדפן/מערכת ההפעלה. ניתן עדיין לנסות להקריא באמצעות הקול המובנה.
@@ -47,6 +48,10 @@
                 <button id="playBtn" onclick="play()" class="flex-1 py-4 bg-[#28c76f] text-white font-bold rounded-xl active:scale-95 transition flex items-center justify-center gap-2">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                     הפעלה
+                </button>
+                <button id="pauseBtn" onclick="togglePause()" disabled class="flex-1 py-4 bg-[#ff9f43] text-white font-bold rounded-xl active:scale-95 transition flex items-center justify-center gap-2 disabled:opacity-40">
+                    <svg id="pauseIcon" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+                    <span id="pauseLabel">השהיה</span>
                 </button>
                 <button id="stopBtn" onclick="stop()" disabled class="flex-1 py-4 bg-[#ea5455] text-white font-bold rounded-xl active:scale-95 transition flex items-center justify-center gap-2 disabled:opacity-40">
                     <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
@@ -72,7 +77,11 @@
 
     <script>
         const ttsText = document.getElementById('ttsText');
+        const ttsHighlightView = document.getElementById('ttsHighlightView');
         const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const pauseLabel = document.getElementById('pauseLabel');
         const stopBtn = document.getElementById('stopBtn');
         const statusTag = document.getElementById('statusTag');
         const voiceSelect = document.getElementById('voiceSelect');
@@ -90,12 +99,27 @@
         const synth = supported ? window.speechSynthesis : null;
 
         let chunks = [];
+        let chunkOffsets = [];
+        let originalText = '';
         let stopRequested = false;
         let isSpeaking = false;
+        let isPaused = false;
+        let pauseWatchdogTimer = null;
+        let resumeToken = 0;
 
         function setStatus(text, className) {
             statusTag.textContent = text;
             statusTag.className = className + " px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 inline-block";
+        }
+
+        function updatePauseButton() {
+            if (isPaused) {
+                pauseIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+                pauseLabel.textContent = 'המשך';
+            } else {
+                pauseIcon.innerHTML = '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>';
+                pauseLabel.textContent = 'השהיה';
+            }
         }
 
         function updateUI() {
@@ -103,11 +127,18 @@
                 setStatus('הדפדפן אינו תומך בהקראה', 'text-gray-500 bg-gray-100');
                 playBtn.disabled = true;
                 playBtn.classList.add('opacity-40');
+                pauseBtn.disabled = true;
                 stopBtn.disabled = true;
                 return;
             }
             stopBtn.disabled = !isSpeaking;
-            setStatus(isSpeaking ? 'מקריא...' : 'מוכן', isSpeaking ? 'text-green-600 bg-green-50' : 'text-orange-600 bg-orange-50');
+            pauseBtn.disabled = !isSpeaking;
+            updatePauseButton();
+            ttsText.classList.toggle('hidden', isSpeaking);
+            ttsHighlightView.classList.toggle('hidden', !isSpeaking);
+            if (isPaused) setStatus('מושהה', 'text-amber-600 bg-amber-50');
+            else if (isSpeaking) setStatus('מקריא...', 'text-green-600 bg-green-50');
+            else setStatus('מוכן', 'text-orange-600 bg-orange-50');
         }
 
         function loadVoices() {
@@ -142,26 +173,48 @@
         }
 
         function splitIntoChunks(text) {
-            const raw = text.match(/[^.!?\n]+[.!?\n]*/g) || [text];
             const result = [];
-            raw.forEach(s => {
-                s = s.trim();
-                if (!s) return;
-                if (s.length > 200) {
-                    (s.match(/.{1,200}(,|\s|$)/g) || [s]).forEach(part => {
-                        part = part.trim();
-                        if (part) result.push(part);
+            const sentenceRe = /[^.!?\n]+[.!?\n]*/g;
+            let m;
+            while ((m = sentenceRe.exec(text)) !== null) {
+                const raw = m[0];
+                const leadingWs = raw.match(/^\s*/)[0].length;
+                const trimmed = raw.trim();
+                if (!trimmed) continue;
+                const sentenceStart = m.index + leadingWs;
+                if (trimmed.length > 200) {
+                    let cursor = 0;
+                    (trimmed.match(/.{1,200}(,|\s|$)/g) || [trimmed]).forEach(part => {
+                        const partLeadingWs = part.match(/^\s*/)[0].length;
+                        const partTrimmed = part.trim();
+                        if (partTrimmed) {
+                            const idx = trimmed.indexOf(part, cursor);
+                            result.push({ text: partTrimmed, start: sentenceStart + idx + partLeadingWs });
+                        }
+                        cursor += part.length;
                     });
                 } else {
-                    result.push(s);
+                    result.push({ text: trimmed, start: sentenceStart });
                 }
-            });
+            }
             return result;
+        }
+
+        function renderHighlight(start, len) {
+            if (!originalText) return;
+            const end = Math.min(start + Math.max(len, 1), originalText.length);
+            const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            ttsHighlightView.innerHTML = esc(originalText.slice(0, start)) +
+                '<span id="curWordSpan" class="bg-amber-200 rounded px-0.5">' + esc(originalText.slice(start, end)) + '</span>' +
+                esc(originalText.slice(end));
+            const span = document.getElementById('curWordSpan');
+            if (span) span.scrollIntoView({ block: 'nearest' });
         }
 
         function speakChunk(i) {
             if (stopRequested || i >= chunks.length) {
                 isSpeaking = false;
+                isPaused = false;
                 updateUI();
                 return;
             }
@@ -170,6 +223,12 @@
             const voice = getSelectedVoice();
             if (voice) utterance.voice = voice;
             utterance.rate = parseFloat(rateInput.value) || 1;
+            utterance.onboundary = (event) => {
+                if (event.name === 'sentence') return;
+                const absStart = chunkOffsets[i] + event.charIndex;
+                const len = event.charLength > 0 ? event.charLength : ((originalText.slice(absStart).match(/^\S+/) || [''])[0].length || 1);
+                renderHighlight(absStart, len);
+            };
             utterance.onend = () => speakChunk(i + 1);
             utterance.onerror = (e) => {
                 if (e.error !== 'interrupted' && e.error !== 'canceled') console.warn('TTS error', e.error);
@@ -188,9 +247,15 @@
                 return;
             }
             synth.cancel();
+            clearTimeout(pauseWatchdogTimer);
             stopRequested = false;
-            chunks = splitIntoChunks(text);
+            isPaused = false;
+            originalText = text;
+            const built = splitIntoChunks(text);
+            chunks = built.map(c => c.text);
+            chunkOffsets = built.map(c => c.start);
             isSpeaking = true;
+            ttsHighlightView.textContent = originalText;
             updateUI();
             speakChunk(0);
         }
@@ -198,9 +263,37 @@
         function stop() {
             if (!supported) return;
             stopRequested = true;
+            clearTimeout(pauseWatchdogTimer);
             synth.cancel();
             isSpeaking = false;
+            isPaused = false;
             updateUI();
+        }
+
+        function pause() {
+            if (!supported || !isSpeaking || isPaused) return;
+            synth.pause();
+            isPaused = true;
+            updateUI();
+        }
+
+        function resume() {
+            if (!supported || !isSpeaking || !isPaused) return;
+            synth.resume();
+            isPaused = false;
+            updateUI();
+            clearTimeout(pauseWatchdogTimer);
+            const token = ++resumeToken;
+            pauseWatchdogTimer = setTimeout(() => {
+                if (token !== resumeToken || !synth.paused) return;
+                isPaused = true;
+                updateUI();
+                setStatus('לא ניתן להמשיך - נסו ללחוץ עצירה ולהתחיל מחדש', 'text-red-600 bg-red-50');
+            }, 1500);
+        }
+
+        function togglePause() {
+            if (isPaused) resume(); else pause();
         }
 
         if (supported) {
