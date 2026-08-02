@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>voiceit - הקראת טקסט בעברית</title>
 
+    <link rel="manifest" href="voiceit-manifest.json">
     <meta name="theme-color" content="#7367f0">
     <link rel="apple-touch-icon" href="voiceit-icon.png">
     <link rel="icon" type="image/png" href="voiceit-icon.png">
@@ -396,6 +397,10 @@
             synth.onvoiceschanged = loadVoices;
         }
         updateUI();
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
     </script>
 </body>
 </html>
