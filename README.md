@@ -1,39 +1,39 @@
 # voiceit
 
-A static web app that reads Hebrew text aloud. Paste text, hit play, and listen.
+אפליקציית web סטטית שמקריאה טקסט בעברית בקול. מדביקים טקסט, לוחצים הפעלה, ומקשיבים.
 
-**Live demo:** https://ronmailx-boop.github.io/voiceit/
+**דמו חי:** https://ronmailx-boop.github.io/voiceit/
 
-## Features
+## פיצ'רים
 
-- **Paste & speak** - paste Hebrew text into the box and click the play button to hear it read aloud, using the browser's built-in Web Speech API (`he-IL`).
-- **Pause / Resume** - stop mid-sentence and continue from the same spot. Implemented by canceling and re-speaking from the last known position rather than the browser's native `pause()`/`resume()`, which is unreliable across browsers.
-- **Word-by-word highlighting** - the word currently being spoken is highlighted in sync with the audio. Uses real `onboundary` word-boundary events where the browser/voice supports them, falling back to an estimated, timer-driven highlight when they don't.
-- **Voice & speed controls** - pick from any installed Hebrew voice and adjust the speaking rate.
-- **Installable (PWA)** - can be added to your home screen / installed as an app via the browser's install prompt.
+- **הדבקה והקראה** - מדביקים טקסט בעברית בתיבה ולוחצים על כפתור ההפעלה כדי לשמוע אותו מוקרא, באמצעות Web Speech API המובנה בדפדפן (`he-IL`).
+- **השהיה / המשך** - עוצרים באמצע משפט וממשיכים מאותה נקודה. מומש באמצעות ביטול (cancel) והתחלת הקראה מחדש מהמיקום האחרון הידוע, במקום `pause()`/`resume()` המובנים של הדפדפן, שאינם אמינים בין דפדפנים שונים.
+- **הדגשת מילה-מילה** - המילה שמוקראת כרגע מודגשת בסנכרון עם הקול. משתמש באירועי `onboundary` אמיתיים כשהדפדפן/הקול תומכים בכך, עם נפילה חזרה (fallback) להדגשה משוערת מבוססת טיימר כשאין תמיכה כזו.
+- **בקרת קול ומהירות** - בחירה מבין קולות עברית מותקנים והתאמת מהירות הדיבור.
+- **ניתנת להתקנה (PWA)** - ניתן להוסיף למסך הבית / להתקין כאפליקציה דרך הצעת ההתקנה של הדפדפן.
 
-## Tech stack
+## טכנולוגיה
 
-Plain HTML, CSS, and JavaScript - no build step, no framework, no npm dependencies. Styling via Tailwind CSS (loaded from a CDN). Speech is handled entirely client-side by the browser's Web Speech API.
+HTML, CSS ו-JavaScript רגילים - בלי שלב build, בלי framework, בלי תלויות npm. עיצוב באמצעות Tailwind CSS (נטען מ-CDN). ההקראה מתבצעת כולה בצד הלקוח באמצעות Web Speech API של הדפדפן.
 
-## Files
+## קבצים
 
-| File | Purpose |
+| קובץ | תפקיד |
 |---|---|
-| `index.html` | The app itself - UI, styling, and all logic |
-| `voiceit-manifest.json` | PWA manifest (name, icons, install behavior) |
-| `sw.js` | Service worker (required for installability) |
-| `voiceit-icon.png` | App icon / favicon |
+| `index.html` | האפליקציה עצמה - ממשק, עיצוב וכל הלוגיקה |
+| `voiceit-manifest.json` | מניפסט PWA (שם, אייקונים, התנהגות התקנה) |
+| `sw.js` | Service worker (נדרש לצורך יכולת ההתקנה) |
+| `voiceit-icon.png` | אייקון האפליקציה / פביקון |
 
-## Running locally
+## הרצה מקומית
 
-Just open `index.html` directly in a browser, or serve the folder with any static file server, e.g.:
+פשוט פותחים את `index.html` ישירות בדפדפן, או מריצים שרת קבצים סטטי כלשהו בתיקייה, למשל:
 
 ```bash
 python3 -m http.server
 ```
 
-## Known limitations
+## מגבלות ידועות
 
-- Hebrew voice availability and quality vary by browser and operating system.
-- Word highlighting is exact when the browser fires `onboundary` events, but only approximate (timer-based) on browsers/voices that don't support them.
+- זמינות ואיכות קולות העברית משתנות בין דפדפנים ומערכות הפעלה.
+- הדגשת המילים מדויקת כשהדפדפן משדר אירועי `onboundary`, אך משוערת בלבד (מבוססת טיימר) בדפדפנים/קולות שלא תומכים בכך.
