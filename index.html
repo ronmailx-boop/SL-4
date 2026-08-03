@@ -3,253 +3,404 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>רשימת קניות חכמה</title>
-    
-    <link rel="manifest" href="manifest.json">
+    <title>voiceit - הקראת טקסט בעברית</title>
+
+    <link rel="manifest" href="voiceit-manifest.json">
     <meta name="theme-color" content="#7367f0">
-    <link rel="apple-touch-icon" href="icon.png">
-    <link rel="icon" type="image/png" href="icon.png">
-    
+    <link rel="apple-touch-icon" href="voiceit-icon.png">
+    <link rel="icon" type="image/png" href="voiceit-icon.png">
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    
+
     <style>
         * { box-sizing: border-box; }
-        body { 
-            font-family: system-ui, sans-serif; 
-            background: #f4f7fa; 
-            padding-bottom: 180px; 
-            overflow-x: hidden; 
+        body {
+            font-family: system-ui, sans-serif;
+            background: #f4f7fa;
             min-height: 100vh;
         }
-        
-        .bottom-bar { 
-            position: fixed; 
-            bottom: 0; 
-            left: 0; 
-            right: 0; 
-            background: #7367f0; 
-            z-index: 1000; 
-            padding: 15px 15px 30px 15px; 
-            border-radius: 35px 35px 0 0; 
-            box-shadow: 0 -10px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .item-card {
-            background: white; border-radius: 25px; padding: 15px; margin-bottom: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; flex-direction: column;
-        }
-
-        .modal-overlay { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.5); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(2px); 
-        }
-
-        .lock-btn-edit { background-color: #ff9f43 !important; }
-        .lock-btn-locked { background-color: #48a9f8 !important; }
+        textarea { resize: vertical; }
+        details > summary { cursor: pointer; list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
     </style>
 </head>
 <body>
 
-    <div id="priceModal" class="modal-overlay">
-        <div class="bg-white w-80 p-6 rounded-3xl text-center shadow-2xl">
-            <h2 class="text-lg font-bold mb-4 text-indigo-600">עדכון מחיר</h2>
-            <input type="number" id="newPriceInput" inputmode="decimal" class="w-full p-3 border rounded-xl mb-4 text-center text-xl font-bold outline-none">
-            <div class="flex gap-3">
-                <button onclick="confirmPriceUpdate()" class="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl">עדכן</button>
-                <button onclick="closePriceModal()" class="flex-1 py-3 bg-gray-100 font-bold rounded-xl text-gray-600">ביטול</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="deleteModal" class="modal-overlay">
-        <div class="bg-white w-80 p-6 rounded-3xl text-center shadow-2xl">
-            <h2 class="text-lg font-bold mb-4">למחוק את כל הרשימה?</h2>
-            <div class="flex gap-3">
-                <button onclick="confirmClearAll()" class="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl">מחק הכל</button>
-                <button onclick="closeDeleteModal()" class="flex-1 py-3 bg-gray-100 font-bold rounded-xl text-gray-600">ביטול</button>
-            </div>
-        </div>
-    </div>
-
     <div class="max-w-md mx-auto p-4">
         <div class="bg-white rounded-2xl p-4 mb-4 flex justify-between items-center shadow-sm">
             <div>
-                <h1 class="text-xl font-bold text-slate-800">הרשימה שלי</h1>
-                <span id="statusTag" class="text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 inline-block">מצב עריכה</span>
+                <div class="flex items-center gap-2">
+                    <svg class="w-8 h-8 flex-shrink-0" width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="2" y="3" width="28" height="17" rx="8" fill="#7367f0"/>
+                        <path d="M10 20 L10 27 L17 20 Z" fill="#7367f0"/>
+                        <path d="M12 7.5 L12 15.5 L20 11.5 Z" fill="#28c76f"/>
+                    </svg>
+                    <h1 class="text-xl font-bold text-slate-800"><span class="text-[#7367f0]">voice</span><span class="text-[#28c76f]">it</span></h1>
+                </div>
+                <div class="text-[11px] text-slate-400 font-medium mt-0.5">הקראת טקסט בעברית</div>
+                <span id="statusTag" class="text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 inline-block">מוכן</span>
             </div>
-            <button onclick="shareToWhatsApp()" class="p-2 text-indigo-500 bg-indigo-50 rounded-full">
-                <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.319 1.592 5.548 0 10.058-4.51 10.06-10.059.002-2.689-1.047-5.215-2.951-7.119-1.906-1.906-4.432-2.956-7.123-2.957-5.549 0-10.059 4.511-10.061 10.06-.001 2.105.56 4.111 1.621 5.895l-.997 3.638 3.732-.98zm11.367-7.404c-.3-.15-1.771-.874-2.046-.974-.275-.1-.475-.15-.675.15-.2.3-.775.974-.95 1.174-.175.2-.35.225-.65.075-.3-.15-1.265-.467-2.41-1.487-.892-.795-1.493-1.777-1.668-2.077-.175-.3-.018-.462.13-.611.134-.134.3-.35.45-.525.15-.175.2-.3.3-.5s.05-.375-.025-.525c-.075-.15-.675-1.625-.925-2.225-.244-.589-.493-.51-.675-.52l-.575-.01c-.2 0-.525.075-.8.375s-1.05 1.025-1.05 2.5 1.075 2.9 1.225 3.1c.15.2 2.115 3.23 5.125 4.53.716.31 1.274.495 1.71.635.72.23 1.375.197 1.893.12.577-.087 1.771-.725 2.021-1.425.25-.7.25-1.3.175-1.425-.075-.125-.275-.2-.575-.35z"/></svg>
-            </button>
+            <a href="shopping.html" class="p-2 text-indigo-500 bg-indigo-50 rounded-full inline-flex">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
+            </a>
         </div>
 
-        <div id="inputForm" class="hidden bg-white p-5 rounded-3xl shadow-lg mb-4 border-2 border-indigo-400">
-            <input type="text" id="itemName" placeholder="שם המוצר" class="w-full p-3 border rounded-xl mb-3 outline-none">
-            <input type="number" id="itemPrice" inputmode="decimal" placeholder="מחיר" class="w-full p-3 border rounded-xl mb-3 outline-none">
-            <div class="flex gap-2">
-                <button onclick="addItem()" class="flex-1 bg-green-500 text-white py-3 rounded-xl font-bold">הוסף</button>
-                <button onclick="toggleInputForm()" class="flex-1 bg-gray-100 py-3 rounded-xl font-bold">סגור</button>
+        <div class="bg-white p-5 rounded-3xl shadow-lg mb-4">
+            <textarea id="ttsText" dir="rtl" rows="8" placeholder="הדבק כאן טקסט בעברית..." class="w-full p-3 border rounded-xl outline-none"></textarea>
+            <div id="ttsHighlightView" dir="rtl" class="hidden w-full p-3 border rounded-xl outline-none whitespace-pre-wrap leading-relaxed overflow-y-auto" style="max-height: 260px;"></div>
+
+            <div id="noVoiceWarning" class="hidden mt-3 text-[12px] text-orange-600 bg-orange-50 rounded-xl p-2">
+                לא נמצא קול עברי מותקן בדפדפן/מערכת ההפעלה. ניתן עדיין לנסות להקריא באמצעות הקול המובנה.
+            </div>
+
+            <div class="flex gap-3 mt-4">
+                <button id="playBtn" onclick="play()" class="flex-1 py-4 bg-[#28c76f] text-white font-bold rounded-xl active:scale-95 transition flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    הפעלה
+                </button>
+                <button id="pauseBtn" onclick="togglePause()" disabled class="flex-1 py-4 bg-[#ff9f43] text-white font-bold rounded-xl active:scale-95 transition flex items-center justify-center gap-2 disabled:opacity-40">
+                    <svg id="pauseIcon" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+                    <span id="pauseLabel">השהיה</span>
+                </button>
+                <button id="stopBtn" onclick="stop()" disabled class="flex-1 py-4 bg-[#ea5455] text-white font-bold rounded-xl active:scale-95 transition flex items-center justify-center gap-2 disabled:opacity-40">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
+                    עצירה
+                </button>
             </div>
         </div>
 
-        <div id="itemsList"></div>
-    </div>
+        <details class="bg-white p-5 rounded-3xl shadow-sm">
+            <summary class="font-bold text-slate-700 flex items-center justify-between">
+                הגדרות קול
+                <span class="text-slate-400">▾</span>
+            </summary>
+            <div class="mt-4">
+                <label class="block text-[12px] text-slate-500 mb-1">קול</label>
+                <select id="voiceSelect" class="w-full p-3 border rounded-xl outline-none mb-4"></select>
 
-    <div class="bottom-bar text-white">
-        <div class="flex justify-around mb-4 px-4 text-center">
-            <div><div class="text-[10px] opacity-70">סה"כ</div><div class="text-xl font-bold">₪<span id="totalSum">0.00</span></div></div>
-            <div class="w-px bg-white/20 h-8 self-center"></div>
-            <div><div class="text-[10px] opacity-70">שולם</div><div class="text-xl font-bold">₪<span id="paidSum">0.00</span></div></div>
-        </div>
-        
-        <div class="flex items-center justify-around">
-            <button id="lockBtn" onclick="toggleLock()" class="w-12 h-12 lock-btn-edit rounded-full flex items-center justify-center shadow-lg active:scale-90 transition">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path id="lockPath" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path></svg>
-            </button>
-            <button onclick="toggleInputForm()" class="w-16 h-16 bg-[#28c76f] rounded-full flex items-center justify-center shadow-2xl border-4 border-white/20 active:scale-95 transition">
-                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="4" d="M12 4v16m8-8H4"></path></svg>
-            </button>
-            <button onclick="openDeleteModal()" class="w-12 h-12 bg-[#ea5455] rounded-full flex items-center justify-center shadow-lg active:scale-90 transition">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-            </button>
-        </div>
+                <label class="block text-[12px] text-slate-500 mb-1">קצב דיבור: <span id="rateValue">1</span></label>
+                <input id="rateInput" type="range" min="0.5" max="1.5" step="0.1" value="1" class="w-full">
+            </div>
+        </details>
     </div>
 
     <script>
-        let shoppingList = JSON.parse(localStorage.getItem('LIST_V6')) || [];
-        let isLocked = false;
-        let currentEditIndex = null;
-        let sortableInstance = null;
+        const ttsText = document.getElementById('ttsText');
+        const ttsHighlightView = document.getElementById('ttsHighlightView');
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const pauseLabel = document.getElementById('pauseLabel');
+        const stopBtn = document.getElementById('stopBtn');
+        const statusTag = document.getElementById('statusTag');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const noVoiceWarning = document.getElementById('noVoiceWarning');
+        const rateInput = document.getElementById('rateInput');
+        const rateValue = document.getElementById('rateValue');
 
-        function render() {
-            const container = document.getElementById('itemsList');
-            container.innerHTML = '';
-            shoppingList.forEach((item, index) => {
-                const div = document.createElement('div');
-                div.className = "item-card";
-                div.dataset.id = item.id;
-                div.innerHTML = `
-                    <div class="flex justify-between items-center mb-3">
-                        <div class="flex items-center gap-3">
-                            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleCheck(${index})" class="w-6 h-6 rounded accent-indigo-600">
-                            <span class="text-xl font-bold text-slate-800 ${item.checked ? 'line-through text-slate-300' : ''}">${item.name}</span>
-                        </div>
-                        <button onclick="removeItem(${index})" class="text-red-400">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-2 py-1">
-                            <button onclick="updateQty(${index}, 1)" class="text-green-500 font-bold text-xl px-2">+</button>
-                            <span class="font-bold text-lg text-slate-700 min-w-[20px] text-center">${item.qty}</span>
-                            <button onclick="updateQty(${index}, -1)" class="text-red-500 font-bold text-xl px-2">-</button>
-                        </div>
-                        <div class="flex items-center gap-4">
-                            <span onclick="openPriceModal(${index})" class="text-lg font-bold text-indigo-600 cursor-pointer">₪${(item.unitPrice * item.qty).toFixed(2)}</span>
-                            <div class="drag-handle text-slate-300 text-xl cursor-grab ${isLocked ? 'hidden' : ''}">⠿</div>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-            calculate();
-            initSort();
+        const TEXT_KEY = 'TTS_TEXT_V1';
+        ttsText.value = localStorage.getItem(TEXT_KEY) || '';
+        ttsText.addEventListener('input', () => localStorage.setItem(TEXT_KEY, ttsText.value));
+
+        rateInput.addEventListener('input', () => { rateValue.textContent = rateInput.value; });
+
+        const supported = 'speechSynthesis' in window;
+        const synth = supported ? window.speechSynthesis : null;
+
+        let chunks = [];
+        let chunkOffsets = [];
+        let originalText = '';
+        let stopRequested = false;
+        let pauseRequested = false;
+        let isSpeaking = false;
+        let isPaused = false;
+        let lastKnownAbsOffset = 0;
+        let boundaryReceivedForChunk = false;
+        let simHighlightTimer = null;
+        let speakGeneration = 0;
+
+        function setStatus(text, className) {
+            statusTag.textContent = text;
+            statusTag.className = className + " px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 inline-block";
         }
 
-        function openPriceModal(index) { 
-            currentEditIndex = index; 
-            const input = document.getElementById('newPriceInput');
-            input.value = shoppingList[index].unitPrice; 
-            document.getElementById('priceModal').style.display = 'flex';
-            setTimeout(() => {
-                input.focus();
-                input.select(); 
-            }, 150);
-        }
-
-        function closePriceModal() { document.getElementById('priceModal').style.display='none'; }
-        function confirmPriceUpdate() { 
-            shoppingList[currentEditIndex].unitPrice = parseFloat(document.getElementById('newPriceInput').value) || 0; 
-            closePriceModal(); save(); 
-        }
-
-        function initSort() {
-            const el = document.getElementById('itemsList');
-            if (sortableInstance) sortableInstance.destroy();
-            if (!isLocked) {
-                sortableInstance = Sortable.create(el, {
-                    handle: '.drag-handle', animation: 150,
-                    onEnd: (evt) => {
-                        const movedItem = shoppingList.splice(evt.oldIndex, 1)[0];
-                        shoppingList.splice(evt.newIndex, 0, movedItem);
-                        save();
-                    }
-                });
-            }
-        }
-
-        function toggleInputForm() { 
-            const form = document.getElementById('inputForm');
-            form.classList.toggle('hidden');
-            if(!form.classList.contains('hidden')) document.getElementById('itemName').focus();
-        }
-
-        function addItem() {
-            const name = document.getElementById('itemName').value;
-            const price = parseFloat(document.getElementById('itemPrice').value) || 0;
-            if(!name) return;
-            shoppingList.push({ id: Date.now().toString(), name, unitPrice: price, qty: 1, checked: false });
-            document.getElementById('itemName').value = '';
-            document.getElementById('itemPrice').value = '';
-            toggleInputForm();
-            save();
-        }
-
-        function openDeleteModal() { if(shoppingList.length > 0) document.getElementById('deleteModal').style.display='flex'; }
-        function closeDeleteModal() { document.getElementById('deleteModal').style.display='none'; }
-        function confirmClearAll() { shoppingList = []; closeDeleteModal(); save(); }
-
-        function calculate() {
-            const total = shoppingList.reduce((acc, i) => acc + (i.unitPrice * i.qty), 0);
-            const paid = shoppingList.filter(i => i.checked).reduce((acc, i) => acc + (i.unitPrice * i.qty), 0);
-            document.getElementById('totalSum').innerText = total.toFixed(2);
-            document.getElementById('paidSum').innerText = paid.toFixed(2);
-        }
-
-        function toggleCheck(index) { shoppingList[index].checked = !shoppingList[index].checked; save(); }
-        function updateQty(index, val) { if(shoppingList[index].qty + val >= 1) { shoppingList[index].qty += val; save(); } }
-        function removeItem(index) { shoppingList.splice(index, 1); save(); }
-        function save() { localStorage.setItem('LIST_V6', JSON.stringify(shoppingList)); render(); }
-        
-        function toggleLock() {
-            isLocked = !isLocked;
-            const btn = document.getElementById('lockBtn');
-            const path = document.getElementById('lockPath');
-            const tag = document.getElementById('statusTag');
-            if (isLocked) {
-                btn.className = "w-12 h-12 lock-btn-locked rounded-full flex items-center justify-center shadow-lg transition";
-                tag.innerText = "נעול";
-                tag.className = "text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 inline-block";
-                path.setAttribute('d', "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z");
+        function updatePauseButton() {
+            if (isPaused) {
+                pauseIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+                pauseLabel.textContent = 'המשך';
             } else {
-                btn.className = "w-12 h-12 lock-btn-edit rounded-full flex items-center justify-center shadow-lg transition";
-                tag.innerText = "מצב עריכה";
-                tag.className = "text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full text-[10px] font-bold mt-1 inline-block";
-                path.setAttribute('d', "M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z");
+                pauseIcon.innerHTML = '<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>';
+                pauseLabel.textContent = 'השהיה';
             }
-            render();
         }
 
-        function shareToWhatsApp() {
-            if (shoppingList.length === 0) return;
-            let text = "🛒 *רשימת הקניות שלי:*\n\n";
-            shoppingList.forEach(i => text += `${i.checked ? '✅' : '⬜'} *${i.name}* (x${i.qty}) - ₪${(i.unitPrice * i.qty).toFixed(2)}\n`);
-            text += `\n💰 *סה"כ: ₪${document.getElementById('totalSum').innerText}*`;
-            window.open("https://wa.me/?text=" + encodeURIComponent(text), '_blank');
+        function updateUI() {
+            if (!supported) {
+                setStatus('הדפדפן אינו תומך בהקראה', 'text-gray-500 bg-gray-100');
+                playBtn.disabled = true;
+                playBtn.classList.add('opacity-40');
+                pauseBtn.disabled = true;
+                stopBtn.disabled = true;
+                return;
+            }
+            stopBtn.disabled = !isSpeaking;
+            pauseBtn.disabled = !isSpeaking;
+            updatePauseButton();
+            ttsText.classList.toggle('hidden', isSpeaking);
+            ttsHighlightView.classList.toggle('hidden', !isSpeaking);
+            if (isPaused) setStatus('מושהה', 'text-amber-600 bg-amber-50');
+            else if (isSpeaking) setStatus('מקריא...', 'text-green-600 bg-green-50');
+            else setStatus('מוכן', 'text-orange-600 bg-orange-50');
         }
 
-        render();
+        function loadVoices() {
+            if (!supported) return;
+            const voices = synth.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('he'));
+            const previousValue = voiceSelect.value;
+            voiceSelect.innerHTML = '';
+
+            if (voices.length === 0) {
+                voiceSelect.classList.add('hidden');
+                noVoiceWarning.classList.remove('hidden');
+                return;
+            }
+
+            voiceSelect.classList.remove('hidden');
+            noVoiceWarning.classList.add('hidden');
+            voices.forEach((v, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `${v.name} (${v.lang})`;
+                voiceSelect.appendChild(opt);
+            });
+            if (previousValue && Number(previousValue) < voices.length) voiceSelect.value = previousValue;
+            voiceSelect.dataset.voices = JSON.stringify(voices.map(v => v.name));
+        }
+
+        function getSelectedVoice() {
+            if (!supported) return null;
+            const voices = synth.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('he'));
+            const idx = Number(voiceSelect.value);
+            return voices[idx] || null;
+        }
+
+        function splitIntoChunks(text) {
+            const result = [];
+            const sentenceRe = /[^.!?\n]+[.!?\n]*/g;
+            let m;
+            while ((m = sentenceRe.exec(text)) !== null) {
+                const raw = m[0];
+                const leadingWs = raw.match(/^\s*/)[0].length;
+                const trimmed = raw.trim();
+                if (!trimmed) continue;
+                const sentenceStart = m.index + leadingWs;
+                if (trimmed.length > 200) {
+                    let cursor = 0;
+                    (trimmed.match(/.{1,200}(,|\s|$)/g) || [trimmed]).forEach(part => {
+                        const partLeadingWs = part.match(/^\s*/)[0].length;
+                        const partTrimmed = part.trim();
+                        if (partTrimmed) {
+                            const idx = trimmed.indexOf(part, cursor);
+                            result.push({ text: partTrimmed, start: sentenceStart + idx + partLeadingWs });
+                        }
+                        cursor += part.length;
+                    });
+                } else {
+                    result.push({ text: trimmed, start: sentenceStart });
+                }
+            }
+            return result;
+        }
+
+        function renderHighlight(start, len) {
+            if (!originalText) return;
+            const end = Math.min(start + Math.max(len, 1), originalText.length);
+            const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            ttsHighlightView.innerHTML = esc(originalText.slice(0, start)) +
+                '<span id="curWordSpan" class="bg-amber-200 rounded px-0.5">' + esc(originalText.slice(start, end)) + '</span>' +
+                esc(originalText.slice(end));
+            const span = document.getElementById('curWordSpan');
+            if (span) span.scrollIntoView({ block: 'nearest' });
+        }
+
+        function stopSimulatedHighlight() {
+            if (simHighlightTimer) {
+                clearTimeout(simHighlightTimer);
+                simHighlightTimer = null;
+            }
+        }
+
+        function estimateWordDurationMs(word, rate) {
+            return (150 + word.length * 60) / (rate || 1);
+        }
+
+        // Many Hebrew voices never fire utterance.onboundary (word-boundary events
+        // are voice/engine-dependent, not guaranteed by the spec). When that happens
+        // we approximate word-by-word timing ourselves so highlighting still moves,
+        // instead of leaving the text unhighlighted for the whole chunk.
+        function startSimulatedHighlight(chunkText, chunkOffset, rate, myGen) {
+            stopSimulatedHighlight();
+            const words = [];
+            const re = /\S+/g;
+            let m;
+            while ((m = re.exec(chunkText)) !== null) {
+                words.push({ start: chunkOffset + m.index, len: m[0].length, text: m[0] });
+            }
+            let idx = 0;
+            function tick() {
+                if (myGen !== speakGeneration || idx >= words.length) { simHighlightTimer = null; return; }
+                const w = words[idx];
+                lastKnownAbsOffset = w.start;
+                renderHighlight(w.start, w.len);
+                idx++;
+                simHighlightTimer = setTimeout(tick, estimateWordDurationMs(w.text, rate));
+            }
+            tick();
+        }
+
+        function speakChunk(i) {
+            if (stopRequested || pauseRequested) {
+                updateUI();
+                return;
+            }
+            if (i >= chunks.length) {
+                stopSimulatedHighlight();
+                isSpeaking = false;
+                isPaused = false;
+                updateUI();
+                return;
+            }
+            const myGen = ++speakGeneration;
+            const utterance = new SpeechSynthesisUtterance(chunks[i]);
+            utterance.lang = 'he-IL';
+            const voice = getSelectedVoice();
+            if (voice) utterance.voice = voice;
+            const rate = parseFloat(rateInput.value) || 1;
+            utterance.rate = rate;
+
+            boundaryReceivedForChunk = false;
+            lastKnownAbsOffset = chunkOffsets[i];
+            stopSimulatedHighlight();
+
+            utterance.onstart = () => {
+                setTimeout(() => {
+                    if (myGen !== speakGeneration) return;
+                    if (!boundaryReceivedForChunk && !stopRequested && !pauseRequested) {
+                        startSimulatedHighlight(chunks[i], chunkOffsets[i], rate, myGen);
+                    }
+                }, 400);
+            };
+            utterance.onboundary = (event) => {
+                if (myGen !== speakGeneration) return;
+                if (event.name === 'sentence') return;
+                boundaryReceivedForChunk = true;
+                stopSimulatedHighlight();
+                const absStart = chunkOffsets[i] + event.charIndex;
+                const len = event.charLength > 0 ? event.charLength : ((originalText.slice(absStart).match(/^\S+/) || [''])[0].length || 1);
+                lastKnownAbsOffset = absStart;
+                renderHighlight(absStart, len);
+            };
+            utterance.onend = () => {
+                if (myGen !== speakGeneration) return;
+                stopSimulatedHighlight();
+                if (pauseRequested) { pauseRequested = false; updateUI(); return; }
+                speakChunk(i + 1);
+            };
+            utterance.onerror = (e) => {
+                if (myGen !== speakGeneration) return;
+                stopSimulatedHighlight();
+                if (pauseRequested) { pauseRequested = false; updateUI(); return; }
+                if (e.error !== 'interrupted' && e.error !== 'canceled') console.warn('TTS error', e.error);
+                speakChunk(i + 1);
+            };
+            synth.speak(utterance);
+        }
+
+        function play() {
+            if (!supported) return;
+            loadVoices();
+            const text = ttsText.value.trim();
+            if (!text) {
+                ttsText.classList.add('border-red-400');
+                setTimeout(() => ttsText.classList.remove('border-red-400'), 600);
+                return;
+            }
+            synth.cancel();
+            stopSimulatedHighlight();
+            speakGeneration++;
+            stopRequested = false;
+            pauseRequested = false;
+            isPaused = false;
+            originalText = text;
+            const built = splitIntoChunks(text);
+            chunks = built.map(c => c.text);
+            chunkOffsets = built.map(c => c.start);
+            lastKnownAbsOffset = 0;
+            isSpeaking = true;
+            ttsHighlightView.textContent = originalText;
+            updateUI();
+            speakChunk(0);
+        }
+
+        function stop() {
+            if (!supported) return;
+            stopRequested = true;
+            pauseRequested = false;
+            speakGeneration++;
+            stopSimulatedHighlight();
+            synth.cancel();
+            isSpeaking = false;
+            isPaused = false;
+            updateUI();
+        }
+
+        // Native speechSynthesis.pause()/resume() is unreliable across browsers
+        // (notably Chrome with network-based voices, where resume() can silently
+        // no-op forever). Instead we cancel the in-flight utterance and, on resume,
+        // re-speak the remaining text from the last known word position - this only
+        // relies on cancel()/speak(), which are the two well-supported operations.
+        function pause() {
+            if (!supported || !isSpeaking || isPaused) return;
+            pauseRequested = true;
+            speakGeneration++;
+            stopSimulatedHighlight();
+            synth.cancel();
+            isPaused = true;
+            updateUI();
+        }
+
+        function resume() {
+            if (!supported || !isSpeaking || !isPaused) return;
+            const remaining = originalText.slice(lastKnownAbsOffset);
+            if (!remaining.trim()) {
+                isSpeaking = false;
+                isPaused = false;
+                updateUI();
+                return;
+            }
+            const built = splitIntoChunks(remaining);
+            chunks = built.map(c => c.text);
+            chunkOffsets = built.map(c => c.start + lastKnownAbsOffset);
+            stopRequested = false;
+            pauseRequested = false;
+            isPaused = false;
+            updateUI();
+            speakChunk(0);
+        }
+
+        function togglePause() {
+            if (isPaused) resume(); else pause();
+        }
+
+        if (supported) {
+            loadVoices();
+            synth.onvoiceschanged = loadVoices;
+        }
+        updateUI();
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(() => {});
+        }
     </script>
 </body>
 </html>
-

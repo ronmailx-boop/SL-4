@@ -1,23 +1,22 @@
 {
-  "short_name": "רשימה",
-  "name": "רשימת קניות חכמה",
+  "short_name": "voiceit",
+  "name": "voiceit - הקראת טקסט בעברית",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "voiceit-icon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icon.png",
+      "src": "voiceit-icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
   ],
-  "start_url": "./shopping.html",
+  "start_url": "./index.html",
   "background_color": "#f4f7fa",
   "display": "standalone",
   "scope": "./",
   "theme_color": "#7367f0"
 }
-
